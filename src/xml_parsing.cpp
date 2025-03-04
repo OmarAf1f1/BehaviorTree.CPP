@@ -18,7 +18,6 @@
 #include <sstream>
 #include <string>
 #include <typeindex>
-#include "behaviortree_cpp/basic_types.h"
 
 #if defined(_MSVC_LANG) && !defined(__clang__)
 #define __bt_cplusplus (_MSC_VER == 1900 ? 201103L : _MSVC_LANG)
@@ -242,10 +241,6 @@ void XMLParser::PImpl::loadDocImpl(XMLDocument* doc, bool add_includes)
   }
 
   const XMLElement* xml_root = doc->RootElement();
-  if(!xml_root)
-  {
-    throw RuntimeError("Invalid XML: missing root element");
-  }
 
   auto format = xml_root->Attribute("BTCPP_format");
   if(!format)
@@ -546,34 +541,6 @@ void VerifyXML(const std::string& xml_text,
           ThrowError(line_number,
                      std::string("The node <") + name + "> must have 1 or more children");
         }
-        if(name == "ReactiveSequence")
-        {
-          size_t async_count = 0;
-          for(auto child = node->FirstChildElement(); child != nullptr;
-              child = child->NextSiblingElement())
-          {
-            const std::string child_name = child->Name();
-            const auto child_search = registered_nodes.find(child_name);
-            if(child_search == registered_nodes.end())
-            {
-              ThrowError(child->GetLineNum(),
-                         std::string("Unknown node type: ") + child_name);
-            }
-            const auto child_type = child_search->second;
-            if(child_type == NodeType::CONTROL &&
-               ((child_name == "ThreadedAction") ||
-                (child_name == "StatefulActionNode") ||
-                (child_name == "CoroActionNode") || (child_name == "AsyncSequence")))
-            {
-              ++async_count;
-              if(async_count > 1)
-              {
-                ThrowError(line_number, std::string("A ReactiveSequence cannot have more "
-                                                    "than one async child."));
-              }
-            }
-          }
-        }
       }
     }
     //recursion
@@ -687,13 +654,9 @@ TreeNode::Ptr XMLParser::PImpl::createNodeFromXML(const XMLElement* element,
   }
 
   PortsRemapping port_remap;
-  NonPortAttributes other_attributes;
-
   for(const XMLAttribute* att = element->FirstAttribute(); att; att = att->Next())
   {
-    const std::string port_name = att->Name();
-    const std::string port_value = att->Value();
-    if(IsAllowedPortName(port_name))
+    if(IsAllowedPortName(att->Name()))
     {
       const std::string port_name = att->Name();
       const std::string port_value = att->Value();
@@ -735,10 +698,6 @@ TreeNode::Ptr XMLParser::PImpl::createNodeFromXML(const XMLElement* element,
 
       port_remap[port_name] = port_value;
     }
-    else if(!IsReservedAttribute(port_name))
-    {
-      other_attributes[port_name] = port_value;
-    }
   }
 
   NodeConfig config;
@@ -756,7 +715,6 @@ TreeNode::Ptr XMLParser::PImpl::createNodeFromXML(const XMLElement* element,
     if(auto script = element->Attribute(attr_name))
     {
       conditions.insert({ ID, std::string(script) });
-      other_attributes.erase(attr_name);
     }
   };
 
@@ -771,7 +729,6 @@ TreeNode::Ptr XMLParser::PImpl::createNodeFromXML(const XMLElement* element,
     AddCondition(config.post_conditions, toStr(post).c_str(), post);
   }
 
-  config.other_attributes = other_attributes;
   //---------------------------------------------
   TreeNode::Ptr new_node;
 

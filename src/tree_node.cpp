@@ -464,23 +464,39 @@ void TreeNode::modifyPortsRemapping(const PortsRemapping& new_remapping)
 }
 
 template <>
-std::string toStr<PreCond>(const PreCond& cond)
+std::string toStr<PreCond>(const PreCond& pre)
 {
-  if(cond < PreCond::COUNT_)
+  switch(pre)
   {
-    return BT::PreCondNames[static_cast<size_t>(cond)];
+    case PreCond::SUCCESS_IF:
+      return "_successIf";
+    case PreCond::FAILURE_IF:
+      return "_failureIf";
+    case PreCond::SKIP_IF:
+      return "_skipIf";
+    case PreCond::WHILE_TRUE:
+      return "_while";
+    default:
+      return "Undefined";
   }
-  return "Undefined";
 }
 
 template <>
-std::string toStr<PostCond>(const PostCond& cond)
+std::string toStr<PostCond>(const PostCond& pre)
 {
-  if(cond < BT::PostCond::COUNT_)
+  switch(pre)
   {
-    return BT::PostCondNames[static_cast<size_t>(cond)];
+    case PostCond::ON_SUCCESS:
+      return "_onSuccess";
+    case PostCond::ON_FAILURE:
+      return "_onFailure";
+    case PostCond::ALWAYS:
+      return "_post";
+    case PostCond::ON_HALTED:
+      return "_onHalted";
+    default:
+      return "Undefined";
   }
-  return "Undefined";
 }
 
 AnyPtrLocked BT::TreeNode::getLockedPortContent(const std::string& key)

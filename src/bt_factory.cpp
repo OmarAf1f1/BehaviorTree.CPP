@@ -107,6 +107,17 @@ BehaviorTreeFactory::BehaviorTreeFactory() : _p(new PImpl)
   _p->scripting_enums = std::make_shared<std::unordered_map<std::string, int>>();
 }
 
+BehaviorTreeFactory::BehaviorTreeFactory(BehaviorTreeFactory&& other) noexcept
+{
+  this->_p = std::move(other._p);
+}
+
+BehaviorTreeFactory& BehaviorTreeFactory::operator=(BehaviorTreeFactory&& other) noexcept
+{
+  this->_p = std::move(other._p);
+  return *this;
+}
+
 BehaviorTreeFactory::~BehaviorTreeFactory()
 {}
 
@@ -520,8 +531,21 @@ BehaviorTreeFactory::substitutionRules() const
   return _p->substitution_rules;
 }
 
+Tree& Tree::operator=(Tree&& other)
+{
+  subtrees = std::move(other.subtrees);
+  manifests = std::move(other.manifests);
+  wake_up_ = other.wake_up_;
+  return *this;
+}
+
 Tree::Tree()
 {}
+
+Tree::Tree(Tree&& other)
+{
+  (*this) = std::move(other);
+}
 
 void Tree::initialize()
 {
@@ -562,10 +586,9 @@ TreeNode* Tree::rootNode() const
   return subtree_nodes.empty() ? nullptr : subtree_nodes.front().get();
 }
 
-bool Tree::sleep(std::chrono::system_clock::duration timeout)
+void Tree::sleep(std::chrono::system_clock::duration timeout)
 {
-  return wake_up_->waitFor(
-      std::chrono::duration_cast<std::chrono::milliseconds>(timeout));
+  wake_up_->waitFor(std::chrono::duration_cast<std::chrono::milliseconds>(timeout));
 }
 
 Tree::~Tree()
@@ -597,7 +620,7 @@ Blackboard::Ptr Tree::rootBlackboard()
   return {};
 }
 
-void Tree::applyVisitor(const std::function<void(const TreeNode*)>& visitor) const
+void Tree::applyVisitor(const std::function<void(const TreeNode*)>& visitor)
 {
   BT::applyRecursiveVisitor(static_cast<const TreeNode*>(rootNode()), visitor);
 }
